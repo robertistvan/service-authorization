@@ -7,7 +7,7 @@ security:
 spring:
   profiles:
     ## Default one is still Eureka
-    active: ${rp.profiles:eureka}
+    active: ${rp.profiles:default}
   cloud:
     consul:
       host: localhost
@@ -93,8 +93,7 @@ github:
   resource:
     userInfoUri: https://api.github.com/user
 logging:
-  level:
-    org.springframework.security: warn
+  level: debug
 
 
 ## Consul as service registry

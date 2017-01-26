@@ -62,11 +62,17 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 	}
 
 	@Override
-	protected void handle(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+	public void handle(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
 			throws IOException, ServletException {
+
+		getRedirectStrategy().sendRedirect(request, response, getRedirectUrl(request, authentication));
+	}
+
+	public String getRedirectUrl(HttpServletRequest request, Authentication authentication) {
 		OAuth2Authentication oauth = (OAuth2Authentication) authentication;
 		OAuth2AccessToken accessToken = tokenServicesFacade.get()
-				.createToken(ReportPortalClient.ui, oauth.getName(), oauth.getUserAuthentication(), oauth.getOAuth2Request().getExtensions());
+				.createToken(ReportPortalClient.ui, oauth.getName(), oauth.getUserAuthentication(),
+						oauth.getOAuth2Request().getExtensions());
 
 		MultiValueMap<String, String> query = new LinkedMultiValueMap<>();
 		query.add("token", accessToken.getValue());
@@ -75,7 +81,7 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 				.replaceQueryParams(query).build().toUri();
 
 		eventPublisher.publishEvent(new UiUserSignedInEvent(authentication));
+		return rqUrl.toString();
 
-		getRedirectStrategy().sendRedirect(request, response, rqUrl.toString());
 	}
 }

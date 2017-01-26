@@ -98,7 +98,7 @@ public class OAuthSecurityConfig extends WebSecurityConfigurerAdapter {
 			 http
 				.antMatcher("/**")
 					 .authorizeRequests()
-				.antMatchers(SSO_LOGIN_PATH + "/**", "/webjars/**", "/index.html", "/epam/**", "/info", "/health")
+				.antMatchers(SSO_LOGIN_PATH + "/**", "/webjars/**", "/index.html", "/epam/**", "/info", "/health", "/signin/**", "/connect/**", "/**")
 					 .permitAll()
 				.anyRequest()
 					 .authenticated()
