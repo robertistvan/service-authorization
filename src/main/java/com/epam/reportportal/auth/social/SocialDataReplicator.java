@@ -52,6 +52,7 @@ import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
 
+import static com.epam.ta.reportportal.commons.EntityUtils.normalizeUsername;
 import static com.epam.ta.reportportal.database.search.FilterCondition.builder;
 
 /**
@@ -62,129 +63,133 @@ import static com.epam.ta.reportportal.database.search.FilterCondition.builder;
 @Component
 public class SocialDataReplicator {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(SocialDataReplicator.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SocialDataReplicator.class);
 
-	private final UserRepository userRepository;
-	private final ProjectRepository projectRepository;
-	private final DataStorage dataStorage;
-	private final RestTemplate restTemplate;
+    private final UserRepository userRepository;
+    private final ProjectRepository projectRepository;
+    private final DataStorage dataStorage;
+    private final RestTemplate restTemplate;
 
-	@Autowired
-	public SocialDataReplicator(UserRepository userRepository, ProjectRepository projectRepository, DataStorage dataStorage) {
-		this.userRepository = userRepository;
-		this.projectRepository = projectRepository;
-		this.dataStorage = dataStorage;
+    @Autowired
+    public SocialDataReplicator(UserRepository userRepository, ProjectRepository projectRepository,
+            DataStorage dataStorage) {
+        this.userRepository = userRepository;
+        this.projectRepository = projectRepository;
+        this.dataStorage = dataStorage;
 
-		this.restTemplate = new RestTemplate();
-	}
+        this.restTemplate = new RestTemplate();
+    }
 
-	public User synchronizeUser(Connection<?> connection) {
-		UserProfile profile = connection.fetchUserProfile();
-		User user = userRepository.findOne(EntityUtils.normalizeUsername(Optional.ofNullable(profile.getId()).orElse(profile.getName())));
+    public User synchronizeUser(Connection<?> connection) {
+        UserProfile profile = connection.fetchUserProfile();
+        User user = userRepository
+                .findOne(normalizeUsername(Optional.ofNullable(profile.getId()).orElse(profile.getName())));
 
-		BusinessRule.expect(user, Objects::nonNull).verify(ErrorType.USER_NOT_FOUND, profile.getId());
-		BusinessRule.expect(user.getType(), userType -> Objects.equals(userType, UserType.GITHUB))
-				.verify(ErrorType.INCORRECT_AUTHENTICATION_TYPE, "User '" + profile.getId() + "' is not GitHUB user");
-		if (!Strings.isNullOrEmpty(profile.getId())) {
-			user.setFullName(profile.getId());
-		}
-		user.getMetaInfo().setSynchronizationDate(Date.from(ZonedDateTime.now().toInstant()));
+        BusinessRule.expect(user, Objects::nonNull).verify(ErrorType.USER_NOT_FOUND, profile.getId());
+        BusinessRule.expect(user.getType(), userType -> Objects.equals(userType, UserType.GITHUB))
+                .verify(ErrorType.INCORRECT_AUTHENTICATION_TYPE, "User '" + profile.getId() + "' is not GitHUB user");
+        if (!Strings.isNullOrEmpty(profile.getId())) {
+            user.setFullName(profile.getId());
+        }
+        user.getMetaInfo().setSynchronizationDate(Date.from(ZonedDateTime.now().toInstant()));
 
-		String newPhotoId = uploadAvatar(profile.getId(), connection.getImageUrl());
-		if (!Strings.isNullOrEmpty(newPhotoId)) {
-			dataStorage.deleteData(user.getPhotoId());
-			user.setPhotoId(newPhotoId);
-		}
-		userRepository.save(user);
-		return user;
-	}
+        String newPhotoId = uploadAvatar(profile.getId(), connection.getImageUrl());
+        if (!Strings.isNullOrEmpty(newPhotoId)) {
+            dataStorage.deleteData(user.getPhotoId());
+            user.setPhotoId(newPhotoId);
+        }
+        userRepository.save(user);
+        return user;
+    }
 
-	/**
-	 * Replicates GitHub user to internal database (if does NOT exist). Creates personal project for that user
-	 *
-	 * @param connection Spring's Social connection representation
-	 * @return Internal User representation
-	 */
-	public User replicateUser(Connection<?> connection) {
-		UserProfile profile = connection.fetchUserProfile();
-		String login = EntityUtils.normalizeUsername(Optional.ofNullable(profile.getId()).orElse(profile.getName()));
-		User user = userRepository.findOne(login);
-		if (null == user) {
-			user = new User();
-			user.setLogin(login);
+    /**
+     * Replicates GitHub user to internal database (if does NOT exist). Creates personal project for that user
+     *
+     * @param connection Spring's Social connection representation
+     * @return Internal User representation
+     */
+    public User replicateUser(Connection<?> connection) {
+        UserProfile profile = connection.fetchUserProfile();
+        String login = normalizeUsername(profile.getUsername());
+        User user = userRepository.findOne(login);
+        if (null == user) {
+            user = new User();
+            user.setLogin(login);
 
-			String email = profile.getEmail();
-			if (Strings.isNullOrEmpty(email)) {
-				//throw exception
-			} else if (userRepository
-					.exists(Filter.builder().withTarget(User.class).withCondition(builder().eq("email", email).build()).build())) {
-				throw new UserSynchronizationException("User with email '" + email + "' already exists");
-			}
+            String email = profile.getEmail();
+            if (Strings.isNullOrEmpty(email)) {
+                //throw exception
+            } else if (userRepository
+                    .exists(Filter.builder().withTarget(User.class).withCondition(builder().eq("email", email).build())
+                            .build())) {
+                throw new UserSynchronizationException("User with email '" + email + "' already exists");
+            }
 
-			user.setEmail(EntityUtils.normalizeEmail(email));
+            user.setEmail(EntityUtils.normalizeEmail(email));
 
-			user.setFullName(profile.getFirstName() + " " + profile.getLastName());
+            user.setFullName(profile.getFirstName() + " " + profile.getLastName());
 
-			User.MetaInfo metaInfo = new User.MetaInfo();
-			Date now = Date.from(ZonedDateTime.now().toInstant());
-			metaInfo.setLastLogin(now);
-			metaInfo.setSynchronizationDate(now);
-			user.setMetaInfo(metaInfo);
+            User.MetaInfo metaInfo = new User.MetaInfo();
+            Date now = Date.from(ZonedDateTime.now().toInstant());
+            metaInfo.setLastLogin(now);
+            metaInfo.setSynchronizationDate(now);
+            user.setMetaInfo(metaInfo);
 
-			user.setType(UserType.GITHUB);
-			user.setRole(UserRole.USER);
+            user.setType(UserType.GITHUB);
+            user.setRole(UserRole.USER);
 
-			if (!Strings.isNullOrEmpty(connection.getImageUrl())) {
-				user.setPhotoId(uploadAvatar(login, connection.getImageUrl()));
-			}
+            if (!Strings.isNullOrEmpty(connection.getImageUrl())) {
+                user.setPhotoId(uploadAvatar(login, connection.getImageUrl()));
+            }
 
-			user.setIsExpired(false);
+            user.setIsExpired(false);
 
-			user.setDefaultProject(generatePersonalProject(user).getId());
-			userRepository.save(user);
+            user.setDefaultProject(generatePersonalProject(user).getId());
+            userRepository.save(user);
 
-		} else if (!UserType.GITHUB.equals(user.getType())) {
-			//if user with such login exists, but it's not GitHub user than throw an exception
-			throw new UserSynchronizationException("User with login '" + user.getId() + "' already exists");
-		}
-		return user;
-	}
+        } else if (!UserType.GITHUB.equals(user.getType())) {
+            //if user with such login exists, but it's not GitHub user than throw an exception
+            throw new UserSynchronizationException("User with login '" + user.getId() + "' already exists");
+        }
+        return user;
+    }
 
-	private String uploadAvatar(String login, String avatarUrl) {
-		String photoId = null;
-		if (null != avatarUrl) {
-			ResponseEntity<Resource> photoRs = this.restTemplate.getForEntity(avatarUrl, Resource.class);
-			try (InputStream photoStream = photoRs.getBody().getInputStream()) {
-				BinaryData photo = new BinaryData(photoRs.getHeaders().getContentType().toString(), photoRs.getBody().contentLength(),
-						photoStream);
-				photoId = dataStorage.saveData(photo, photoRs.getBody().getFilename());
-			} catch (IOException e) {
-				LOGGER.error("Unable to load photo for user {}", login);
-			}
-		}
-		return photoId;
-	}
+    private String uploadAvatar(String login, String avatarUrl) {
+        String photoId = null;
+        if (null != avatarUrl) {
+            ResponseEntity<Resource> photoRs = this.restTemplate.getForEntity(avatarUrl, Resource.class);
+            try (InputStream photoStream = photoRs.getBody().getInputStream()) {
+                BinaryData photo = new BinaryData(photoRs.getHeaders().getContentType().toString(),
+                        photoRs.getBody().contentLength(),
+                        photoStream);
+                photoId = dataStorage.saveData(photo, photoRs.getBody().getFilename());
+            } catch (IOException e) {
+                LOGGER.error("Unable to load photo for user {}", login);
+            }
+        }
+        return photoId;
+    }
 
-	/**
-	 * Generates personal project if does NOT exists
-	 *
-	 * @param user Owner of personal project
-	 * @return Created project
-	 */
-	private Project generatePersonalProject(User user) {
-		String personalProjectName = PersonalProjectUtils.personalProjectName(user.getLogin());
-		Project personalProject = projectRepository.findOne(personalProjectName);
-		if (null == personalProject) {
-			personalProject = PersonalProjectUtils.generatePersonalProject(user);
-			projectRepository.save(personalProject);
-		}
-		return personalProject;
-	}
+    /**
+     * Generates personal project if does NOT exists
+     *
+     * @param user Owner of personal project
+     * @return Created project
+     */
+    private Project generatePersonalProject(User user) {
+        String personalProjectName = PersonalProjectUtils.personalProjectName(user.getLogin());
+        Project personalProject = projectRepository.findOne(personalProjectName);
+        if (null == personalProject) {
+            personalProject = PersonalProjectUtils.generatePersonalProject(user);
+            projectRepository.save(personalProject);
+        }
+        return personalProject;
+    }
 
-	public static class UserSynchronizationException extends AuthenticationException {
+    public static class UserSynchronizationException extends AuthenticationException {
 
-		public UserSynchronizationException(String msg) {
-			super(msg);
-		}
-	}
+        public UserSynchronizationException(String msg) {
+            super(msg);
+        }
+    }
 }

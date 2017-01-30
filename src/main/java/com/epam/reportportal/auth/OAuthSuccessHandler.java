@@ -48,40 +48,44 @@ import java.net.URI;
 @Component
 public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-	/*
-	 * Internal token services facade
-	 */
-	@Autowired
-	private Provider<TokenServicesFacade> tokenServicesFacade;
+    /*
+     * Internal token services facade
+     */
+    @Autowired
+    private Provider<TokenServicesFacade> tokenServicesFacade;
 
-	@Autowired
-	private ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
-	OAuthSuccessHandler() {
-		super("/");
-	}
+    OAuthSuccessHandler() {
+        super("/");
+    }
 
-	@Override
-	public void handle(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
-			throws IOException, ServletException {
+    @Override
+    public void handle(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+            throws IOException, ServletException {
 
-		getRedirectStrategy().sendRedirect(request, response, getRedirectUrl(request, authentication));
-	}
+        getRedirectStrategy()
+                .sendRedirect(request, response, handle(request, (OAuth2Authentication) authentication));
+    }
 
-	public String getRedirectUrl(HttpServletRequest request, Authentication authentication) {
-		OAuth2Authentication oauth = (OAuth2Authentication) authentication;
-		OAuth2AccessToken accessToken = tokenServicesFacade.get()
-				.createToken(ReportPortalClient.ui, oauth.getName(), oauth.getUserAuthentication(),
-						oauth.getOAuth2Request().getExtensions());
+    public String handle(HttpServletRequest request, OAuth2Authentication oauth) {
+        return handle(request, oauth.getUserAuthentication());
+    }
 
-		MultiValueMap<String, String> query = new LinkedMultiValueMap<>();
-		query.add("token", accessToken.getValue());
-		query.add("token_type", accessToken.getTokenType());
-		URI rqUrl = UriComponentsBuilder.fromHttpRequest(new ServletServerHttpRequest(request)).replacePath("/ui/authSuccess.html")
-				.replaceQueryParams(query).build().toUri();
+    public String handle(HttpServletRequest request, Authentication authentication) {
+        OAuth2AccessToken accessToken = tokenServicesFacade.get()
+                .createToken(ReportPortalClient.ui, authentication.getName(), authentication);
 
-		eventPublisher.publishEvent(new UiUserSignedInEvent(authentication));
-		return rqUrl.toString();
+        MultiValueMap<String, String> query = new LinkedMultiValueMap<>();
+        query.add("token", accessToken.getValue());
+        query.add("token_type", accessToken.getTokenType());
+        URI rqUrl = UriComponentsBuilder.fromHttpRequest(new ServletServerHttpRequest(request))
+                .replacePath("/ui/authSuccess.html")
+                .replaceQueryParams(query).build().toUri();
 
-	}
+        eventPublisher.publishEvent(new UiUserSignedInEvent(authentication));
+        return rqUrl.toString();
+
+    }
 }

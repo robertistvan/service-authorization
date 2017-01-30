@@ -50,9 +50,11 @@ import static org.springframework.web.bind.annotation.RequestMethod.*;
  * Endpoint for oauth configs
  *
  * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
+ * @deprecated Remove OAuthDetailsResource
  */
 @Controller
 @RequestMapping("/settings/{profileId}/oauth")
+@Deprecated
 public class OAuthConfigurationEndpoint {
 
 	@Autowired

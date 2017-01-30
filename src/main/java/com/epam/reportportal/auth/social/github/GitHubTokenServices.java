@@ -18,7 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
  */
-package com.epam.reportportal.auth.integration.github;
+package com.epam.reportportal.auth.social.github;
 
 import com.epam.reportportal.auth.AuthUtils;
 import com.epam.ta.reportportal.database.entity.OAuth2LoginDetails;
@@ -26,10 +26,8 @@ import com.epam.ta.reportportal.database.entity.user.User;
 import com.google.common.base.Splitter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.oauth2.client.resource.OAuth2AccessDeniedException;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
-import org.springframework.security.oauth2.common.exceptions.UserDeniedAuthorizationException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.OAuth2Request;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
@@ -48,6 +46,7 @@ import static java.util.Optional.ofNullable;
  *
  * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
  */
+@Deprecated
 public class GitHubTokenServices implements ResourceServerTokenServices {
 
 	private final GitHubUserReplicator replicator;

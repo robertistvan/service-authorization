@@ -18,46 +18,40 @@
  * You should have received a copy of the GNU General Public License
  * along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
  */
-package com.epam.reportportal.auth.store.entity;
+package com.epam.reportportal.auth.social.github;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author Andrei Varabyeu
+ * Represents response from GET /user GitHub API
+ *
+ * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
  */
-@Document(collection = "social_session")
-public class SocialSession {
+class UserResource {
 
-	@Id
-	private String id;
+	public String login;
+	public String email;
+	public String name;
+	@JsonProperty("avatar_url")
+	public String avatarUrl;
+	@JsonProperty("organizations_url")
+	public String organizationsUrl;
 
-	private Map<String, Object> attributes;
+	public Map<String, Object> details = new HashMap<>();
 
-	public SocialSession() {
-
+	@JsonAnyGetter
+	public Map<String, Object> any() {
+		return details;
 	}
 
-	public SocialSession(String id, Map<String, Object> attributes) {
-		this.id = id;
-		this.attributes = attributes;
+	@JsonAnySetter
+	public void setUnknown(String name, Object value) {
+		details.put(name, value);
 	}
 
-	public String getId() {
-		return id;
-	}
-
-	public void setId(String id) {
-		this.id = id;
-	}
-
-	public Map<String, Object> getAttributes() {
-		return attributes;
-	}
-
-	public void setAttributes(Map<String, Object> attributes) {
-		this.attributes = attributes;
-	}
 }

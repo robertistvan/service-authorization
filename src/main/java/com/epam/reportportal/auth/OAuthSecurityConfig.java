@@ -20,8 +20,8 @@
  */
 package com.epam.reportportal.auth;
 
-import com.epam.reportportal.auth.integration.github.GitHubTokenServices;
-import com.epam.reportportal.auth.integration.github.GitHubUserReplicator;
+import com.epam.reportportal.auth.social.github.GitHubTokenServices;
+import com.epam.reportportal.auth.social.github.GitHubUserReplicator;
 import com.google.common.collect.ImmutableList;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionOutcome;

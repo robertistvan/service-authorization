@@ -18,40 +18,37 @@
  * You should have received a copy of the GNU General Public License
  * along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
  */
-package com.epam.reportportal.auth.integration.github;
+package com.epam.reportportal.auth.store.entity;
 
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Represents response from GET /user GitHub API
- *
- * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
+ * @author Andrei Varabyeu
  */
-class UserResource {
+@Document(collection = "social_provider")
+public class SocialProvider {
 
-	public String login;
-	public String email;
-	public String name;
-	@JsonProperty("avatar_url")
-	public String avatarUrl;
-	@JsonProperty("organizations_url")
-	public String organizationsUrl;
+    @Id
+    private String id;
 
-	public Map<String, Object> details = new HashMap<>();
+    private Map<String, String> configuration;
 
-	@JsonAnyGetter
-	public Map<String, Object> any() {
-		return details;
-	}
+    public String getId() {
+        return id;
+    }
 
-	@JsonAnySetter
-	public void setUnknown(String name, Object value) {
-		details.put(name, value);
-	}
+    public void setId(String id) {
+        this.id = id;
+    }
 
+    public Map<String, String> getConfiguration() {
+        return configuration;
+    }
+
+    public void setConfiguration(Map<String, String> configuration) {
+        this.configuration = configuration;
+    }
 }

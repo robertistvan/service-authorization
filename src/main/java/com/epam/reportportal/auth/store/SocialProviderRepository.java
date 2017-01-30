@@ -18,36 +18,13 @@
  * You should have received a copy of the GNU General Public License
  * along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
  */
-package com.epam.reportportal.auth.integration.github;
+package com.epam.reportportal.auth.store;
 
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
-
-import java.util.HashMap;
-import java.util.Map;
+import com.epam.reportportal.auth.store.entity.SocialProvider;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
 /**
- * GitHub API: Organization resource representation
- *
- * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
+ * @author Andrei Varabyeu
  */
-public class OrganizationResource {
-
-	public String login;
-	public Long id;
-	public String url;
-	public String description;
-
-	public Map<String, Object> details = new HashMap<>();
-
-	@JsonAnyGetter
-	public Map<String, Object> any() {
-		return details;
-	}
-
-	@JsonAnySetter
-	public void setUnknown(String name, Object value) {
-		details.put(name, value);
-	}
-
+public interface SocialProviderRepository extends MongoRepository<SocialProvider, String> {
 }

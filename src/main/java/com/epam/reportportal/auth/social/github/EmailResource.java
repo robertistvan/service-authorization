@@ -18,7 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
  */
-package com.epam.reportportal.auth.integration.github;
+package com.epam.reportportal.auth.social.github;
 
 import com.google.common.base.MoreObjects;
 
@@ -29,7 +29,7 @@ import java.util.Objects;
  *
  * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
  */
-class EmailResource {
+public class EmailResource {
 
 	public String email;
 	public boolean verified;

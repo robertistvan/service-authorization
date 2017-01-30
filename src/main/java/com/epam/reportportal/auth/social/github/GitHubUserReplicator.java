@@ -18,7 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
  */
-package com.epam.reportportal.auth.integration.github;
+package com.epam.reportportal.auth.social.github;
 
 import com.epam.ta.reportportal.commons.EntityUtils;
 import com.epam.ta.reportportal.commons.validation.BusinessRule;
@@ -54,8 +54,10 @@ import static com.epam.ta.reportportal.database.search.FilterCondition.builder;
  * Replicates GitHub account info with internal ReportPortal's database
  *
  * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
+ * @deprecated in favor of {@link com.epam.reportportal.auth.social.SocialDataReplicator}
  */
 @Component
+@Deprecated
 public class GitHubUserReplicator {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(GitHubUserReplicator.class);

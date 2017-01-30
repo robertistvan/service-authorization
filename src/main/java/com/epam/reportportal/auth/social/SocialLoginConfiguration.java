@@ -1,115 +1,116 @@
+/*
+ * Copyright 2016 EPAM Systems
+ *
+ *
+ * This file is part of EPAM Report Portal.
+ * https://github.com/reportportal/service-authorization
+ *
+ * Report Portal is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Report Portal is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package com.epam.reportportal.auth.social;
 
 import com.epam.reportportal.auth.OAuthSuccessHandler;
-import com.epam.reportportal.auth.TokenServicesFacade;
 import com.epam.reportportal.auth.converter.MongoConnectionConverters;
 import com.epam.reportportal.auth.store.SocialConnectionsRepository;
+import com.epam.reportportal.auth.store.SocialMongoSessionRepository;
+import com.epam.reportportal.auth.store.SocialProviderRepository;
 import com.epam.ta.reportportal.database.entity.user.User;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.data.mongodb.core.MongoOperations;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.social.config.annotation.EnableSocial;
-import org.springframework.social.connect.*;
-import org.springframework.social.connect.support.ConnectionFactoryRegistry;
+import org.springframework.social.connect.Connection;
+import org.springframework.social.connect.ConnectionFactoryLocator;
+import org.springframework.social.connect.ConnectionSignUp;
+import org.springframework.social.connect.UsersConnectionRepository;
 import org.springframework.social.connect.web.ProviderSignInController;
-import org.springframework.social.connect.web.ProviderSignInInterceptor;
 import org.springframework.social.connect.web.SignInAdapter;
-import org.springframework.social.github.connect.GitHubConnectionFactory;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.context.request.WebRequest;
+import org.springframework.social.security.SocialAuthenticationToken;
 
-import javax.inject.Provider;
 import javax.servlet.http.HttpServletRequest;
 
 /**
- * Created by andrei_varabyeu on 1/26/17.
+ * Social (via third-party providers) login/sign-up configuration
+ *
+ * @author Andrei Varabyeu
  */
 @Configuration
 @EnableSocial
 public class SocialLoginConfiguration {
 
-	/*
- 	* Internal token services facade
- 	*/
-	@Autowired
-	private Provider<TokenServicesFacade> tokenServicesFacade;
+    @Autowired
+    private SocialDataReplicator socialDataReplicator;
 
-	@Autowired
-	private ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private OAuthSuccessHandler oAuthSuccessHandler;
 
-	@Autowired
-	private SocialDataReplicator socialDataReplicator;
+    @Autowired
+    private SocialMongoSessionRepository sessionStrategy;
 
-	@Autowired
-	private OAuthSuccessHandler oAuthSuccessHandler;
+    @Autowired
+    private SocialProviderRepository socialProviderRepository;
 
-	@Autowired
-	private MongoOperations mongoOperations;
+    @Autowired
+    private MongoOperations mongoOperations;
 
-	@Bean
-	public ProviderSignInController providerSignInController() {
-		ProviderSignInController providerSignInController = new ProviderSignInController(connectionFactoryLocator(),
-				usersConnectionRepository(), rpSignInAdapter());
-//		providerSignInController.setSignInUrl("/sso/new/login");
-		providerSignInController.addSignInInterceptor(new ProviderSignInInterceptor<Object>() {
-			@Override
-			public void preSignIn(ConnectionFactory<Object> connectionFactory, MultiValueMap<String, String> parameters,
-					WebRequest request) {
+    @Bean
+    public ProviderSignInController providerSignInController() {
+        ProviderSignInController providerSignInController = new ProviderSignInController(connectionFactoryLocator(),
+                usersConnectionRepository(), rpSignInAdapter());
+        providerSignInController.setSessionStrategy(sessionStrategy);
+        return providerSignInController;
+    }
 
-				connectionFactory.createConnection()
-			}
+    @Bean
+    @Scope(value = "singleton", proxyMode = ScopedProxyMode.INTERFACES)
+    public ConnectionFactoryLocator connectionFactoryLocator() {
+        return new SocialProviderFactoryLocator(socialProviderRepository);
+    }
 
-			@Override
-			public void postSignIn(Connection<Object> connection, WebRequest request) {
+    @Bean
+    @Scope(value = "singleton", proxyMode = ScopedProxyMode.INTERFACES)
+    public UsersConnectionRepository usersConnectionRepository() {
+        SocialConnectionsRepository repo = new SocialConnectionsRepository(mongoOperations, connectionFactoryLocator(),
+                new MongoConnectionConverters(connectionFactoryLocator(), Encryptors.noOpText()));
+        repo.setConnectionSignUp(new SignUpAdapter(socialDataReplicator));
+        return repo;
+    }
 
-			}
-		});
-		return providerSignInController;
-	}
+    @Bean
+    public SignInAdapter rpSignInAdapter() {
+        return (userId, connection, request) -> oAuthSuccessHandler
+                .handle((HttpServletRequest) request.getNativeRequest(),
+                        new SocialAuthenticationToken(connection, null));
+    }
 
-	@Bean
-	@Scope(value = "singleton", proxyMode = ScopedProxyMode.INTERFACES)
-	public ConnectionFactoryLocator connectionFactoryLocator() {
-		ConnectionFactoryRegistry registry = new ConnectionFactoryRegistry();
-		registry.addConnectionFactory(new GitHubConnectionFactory("3e9d79ff81b114960d0b", "6cabe2fe61b491a5580c769e6e9bb85d16b2c077"));
+    static class SignUpAdapter implements ConnectionSignUp {
 
-		return registry;
-	}
+        private final SocialDataReplicator socialDataReplicator;
 
-	@Bean
-	@Scope(value = "singleton", proxyMode = ScopedProxyMode.INTERFACES)
-	public UsersConnectionRepository usersConnectionRepository() {
-		SocialConnectionsRepository repo = new SocialConnectionsRepository(mongoOperations, connectionFactoryLocator(),
-				new MongoConnectionConverters(connectionFactoryLocator(), Encryptors.noOpText()));
-		repo.setConnectionSignUp(new SignUpAdapter(socialDataReplicator));
-		return repo;
-	}
+        SignUpAdapter(SocialDataReplicator socialDataReplicator) {
+            this.socialDataReplicator = socialDataReplicator;
+        }
 
-	@Bean
-	public SignInAdapter rpSignInAdapter() {
-		return (userId, connection, request) -> oAuthSuccessHandler
-				.getRedirectUrl((HttpServletRequest) request.getNativeRequest(), new UsernamePasswordAuthenticationToken(userId, ""));
-	}
-
-	static class SignUpAdapter implements ConnectionSignUp {
-
-		private final SocialDataReplicator socialDataReplicator;
-
-		SignUpAdapter(SocialDataReplicator socialDataReplicator) {
-			this.socialDataReplicator = socialDataReplicator;
-		}
-
-		@Override
-		public String execute(Connection<?> connection) {
-			User user = socialDataReplicator.replicateUser(connection);
-			return user.getId();
-		}
-	}
+        @Override
+        public String execute(Connection<?> connection) {
+            User user = socialDataReplicator.replicateUser(connection);
+            return user.getId();
+        }
+    }
 
 }

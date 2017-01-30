@@ -78,10 +78,6 @@ public class TokenServicesFacade {
 	}
 
 	public OAuth2AccessToken createToken(ReportPortalClient client, String username, Authentication userAuthentication) {
-		return createToken(client, username, userAuthentication, Collections.emptyMap());
-	}
-
-	public OAuth2AccessToken createToken(ReportPortalClient client, String username, Authentication userAuthentication, Map<String, Serializable> extensionParams) {
 		//@formatter:off
 		ClientDetails clientDetails = clientDetailsService.loadClientByClientId(client.name());
 		OAuth2Request oAuth2Request = oAuth2RequestFactory.createOAuth2Request(clientDetails, oAuth2RequestFactory.createTokenRequest(
@@ -90,7 +86,6 @@ public class TokenServicesFacade {
 						.put("username", username)
 						.put("grant", "password")
 						.build(), clientDetails));
-		oAuth2Request.getExtensions().putAll(extensionParams);
 		//@formatter:on
 		return tokenServices.createAccessToken(new OAuth2Authentication(oAuth2Request, userAuthentication));
 	}

@@ -1,0 +1,89 @@
+/*
+ * Copyright 2016 EPAM Systems
+ *
+ *
+ * This file is part of EPAM Report Portal.
+ * https://github.com/reportportal/service-authorization
+ *
+ * Report Portal is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Report Portal is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Report Portal.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package com.epam.reportportal.auth.social.github;
+
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+
+/**
+ * Simple GitHub client
+ *
+ * @author <a href="mailto:andrei_varabyeu@epam.com">Andrei Varabyeu</a>
+ */
+public class GitHubClient {
+
+    private static final String GITHUB_BASE_URL = "https://api.github.com";
+
+    private final RestTemplate restTemplate;
+
+    private GitHubClient(String accessToken) {
+        this.restTemplate = new RestTemplate();
+        this.restTemplate.getInterceptors().add((request, body, execution) -> {
+            request.getHeaders().add("Authorization", "bearer " + accessToken);
+            return execution.execute(request, body);
+        });
+    }
+
+    private GitHubClient(RestTemplate restTemplate) {
+        this.restTemplate = new RestTemplate();
+    }
+
+    public static GitHubClient withAccessToken(String accessToken) {
+        return new GitHubClient(accessToken);
+    }
+
+    public static GitHubClient withRestTemplate(RestTemplate restTemplate) {
+        return new GitHubClient(restTemplate);
+    }
+
+    public UserResource getUser() {
+        return this.restTemplate.getForObject(GITHUB_BASE_URL + "/user", UserResource.class);
+    }
+
+    public List<EmailResource> getUserEmails() {
+        return getForObject(GITHUB_BASE_URL + "/user/emails", new ParameterizedTypeReference<List<EmailResource>>() {
+        });
+    }
+
+    public List<OrganizationResource> getUserOrganizations(String user) {
+        return getForObject(GITHUB_BASE_URL + "/users/{}/orgs",
+                new ParameterizedTypeReference<List<OrganizationResource>>() {
+                }, user);
+    }
+
+    public List<OrganizationResource> getUserOrganizations(UserResource user) {
+        return getForObject(user.organizationsUrl, new ParameterizedTypeReference<List<OrganizationResource>>() {
+        });
+    }
+
+    public ResponseEntity<Resource> downloadResource(String url) {
+        return this.restTemplate.getForEntity(url, Resource.class);
+    }
+
+    private <T> T getForObject(String url, ParameterizedTypeReference<T> type, Object... urlVars) {
+        return this.restTemplate.exchange(url, HttpMethod.GET, null, type, urlVars).getBody();
+    }
+}
