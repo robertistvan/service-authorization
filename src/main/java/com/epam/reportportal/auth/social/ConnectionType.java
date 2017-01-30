@@ -70,7 +70,7 @@ public enum ConnectionType {
     }
 
     public String[] getConfigAttributes() {
-        return configAttributes;
+        return Arrays.copyOf(configAttributes, configAttributes.length);
     }
 
     public ConnectionFactory<?> buildServiceProvider(Map<String, String> configAttributes) {
