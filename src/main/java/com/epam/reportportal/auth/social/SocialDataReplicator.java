@@ -88,9 +88,7 @@ public class SocialDataReplicator {
         BusinessRule.expect(user, Objects::nonNull).verify(ErrorType.USER_NOT_FOUND, profile.getId());
         BusinessRule.expect(user.getType(), userType -> Objects.equals(userType, UserType.GITHUB))
                 .verify(ErrorType.INCORRECT_AUTHENTICATION_TYPE, "User '" + profile.getId() + "' is not GitHUB user");
-        if (!Strings.isNullOrEmpty(profile.getId())) {
-            user.setFullName(profile.getId());
-        }
+        user.setFullName(profile.getId());
         user.getMetaInfo().setSynchronizationDate(Date.from(ZonedDateTime.now().toInstant()));
 
         String newPhotoId = uploadAvatar(profile.getId(), connection.getImageUrl());
