@@ -20,15 +20,11 @@
  */
 package com.epam.reportportal.auth;
 
-import com.epam.ta.reportportal.database.dao.ServerSettingsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.info.Info;
 import org.springframework.boot.actuate.info.InfoContributor;
+import org.springframework.social.connect.ConnectionFactoryLocator;
 import org.springframework.stereotype.Component;
-
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 
 /**
  * Shows list of supported authentication providers
@@ -38,17 +34,15 @@ import java.util.Set;
 @Component
 public class AuthProvidersInfoContributor implements InfoContributor {
 
-	private final ServerSettingsRepository settingsRepository;
+    private final ConnectionFactoryLocator socialFactoryLocator;
 
-	@Autowired
-	public AuthProvidersInfoContributor(ServerSettingsRepository settingsRepository) {
-		this.settingsRepository = settingsRepository;
-	}
+    @Autowired
+    public AuthProvidersInfoContributor(ConnectionFactoryLocator socialFactoryLocator) {
+        this.socialFactoryLocator = socialFactoryLocator;
+    }
 
-	@Override
-	public void contribute(Info.Builder builder) {
-		Optional<Set<String>> loginDetails = Optional.ofNullable(settingsRepository.findOne("default"))
-				.flatMap(settings -> Optional.ofNullable(settings.getoAuth2LoginDetails())).map(Map::keySet);
-		loginDetails.ifPresent(it -> builder.withDetail("auth_extensions", it));
-	}
+    @Override
+    public void contribute(Info.Builder builder) {
+        builder.withDetail("auth_extensions", socialFactoryLocator.registeredProviderIds());
+    }
 }

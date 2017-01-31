@@ -131,6 +131,23 @@ public class SocialEndpoint {
     }
 
     /**
+     * Returns oauth integration attributes
+     *
+     * @return All defined OAuth integration settings
+     */
+    @RequestMapping(value = "/settings/social/{providerId}/attributes", method = { GET })
+    @ResponseBody
+    @ResponseStatus(HttpStatus.OK)
+    @ApiOperation(value = "Returns OAuth Server Settings", notes = "'default' profile is using till additional UI implementations")
+    public String[] getOAuthIntegrationAttributes(@PathVariable("providerId") String providerId) {
+        //check we support it
+        final Optional<ConnectionType> connectionType = ConnectionType.byId(providerId.toUpperCase());
+        BusinessRule.expect(connectionType, Predicates.isPresent())
+                .verify(ErrorType.INCORRECT_AUTHENTICATION_TYPE, "providerId");
+        return connectionType.get().getConfigAttributes();
+    }
+
+    /**
      * Returns oauth integration settings
      *
      * @param providerId ID of third-party OAuth provider
