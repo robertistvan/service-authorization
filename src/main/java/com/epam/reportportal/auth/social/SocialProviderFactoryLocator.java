@@ -22,10 +22,21 @@ package com.epam.reportportal.auth.social;
 
 import com.epam.reportportal.auth.store.SocialProviderRepository;
 import com.epam.reportportal.auth.store.entity.SocialProvider;
+import com.google.common.base.Strings;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.social.connect.ConnectionFactory;
-import org.springframework.social.connect.ConnectionFactoryLocator;
+import org.springframework.social.connect.support.OAuth2ConnectionFactory;
+import org.springframework.social.security.SocialAuthenticationServiceLocator;
+import org.springframework.social.security.provider.OAuth2AuthenticationService;
+import org.springframework.social.security.provider.SocialAuthenticationService;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.inject.Inject;
+import javax.servlet.http.HttpServletRequest;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,7 +47,7 @@ import java.util.stream.Collectors;
  * @since 3.0
  */
 //TODO cache?
-public class SocialProviderFactoryLocator implements ConnectionFactoryLocator {
+public class SocialProviderFactoryLocator implements SocialAuthenticationServiceLocator {
 
     private final SocialProviderRepository socialProviderRepository;
 
@@ -66,5 +77,34 @@ public class SocialProviderFactoryLocator implements ConnectionFactoryLocator {
     @Override
     public Set<String> registeredProviderIds() {
         return socialProviderRepository.findAll().stream().map(SocialProvider::getId).collect(Collectors.toSet());
+    }
+
+    @Override
+    public SocialAuthenticationService<?> getAuthenticationService(String providerId) {
+        return new OAuth2AuthenticationService<Object>((OAuth2ConnectionFactory) getConnectionFactory(providerId)) {
+            @Override
+            protected String buildReturnToUrl(HttpServletRequest request) {
+
+                final Map<String, List<String>> urlParams = getReturnToUrlParameters()
+                        .stream()
+                        .collect(Collectors
+                                .toMap(p -> p, p -> {
+                                    final String value = request.getParameter(p);
+                                    if (Strings.isNullOrEmpty(value)) {
+                                        return Collections.emptyList();
+                                    }
+                                    return Collections.singletonList(value);
+                                }));
+                return ServletUriComponentsBuilder
+                        .fromHttpRequest(new ServletServerHttpRequest(request))
+                        .queryParams(new LinkedMultiValueMap<>(urlParams))
+                        .toUriString();
+            }
+        };
+    }
+
+    @Override
+    public Set<String> registeredAuthenticationProviderIds() {
+        return registeredProviderIds();
     }
 }

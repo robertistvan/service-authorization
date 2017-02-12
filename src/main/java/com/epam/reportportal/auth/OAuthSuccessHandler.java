@@ -28,6 +28,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.social.security.SocialAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -66,7 +67,7 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             throws IOException, ServletException {
 
         getRedirectStrategy()
-                .sendRedirect(request, response, handle(request, (OAuth2Authentication) authentication));
+                .sendRedirect(request, response, handle(request, authentication));
     }
 
     public String handle(HttpServletRequest request, OAuth2Authentication oauth) {

@@ -38,6 +38,8 @@ import org.springframework.social.connect.*;
 import org.springframework.social.connect.web.ConnectSupport;
 import org.springframework.social.connect.web.ProviderSignInController;
 import org.springframework.social.connect.web.SignInAdapter;
+import org.springframework.social.security.SocialAuthenticationServiceLocator;
+import org.springframework.social.security.SocialAuthenticationServiceRegistry;
 import org.springframework.social.security.SocialAuthenticationToken;
 import org.springframework.social.support.URIBuilder;
 import org.springframework.stereotype.Controller;
@@ -76,24 +78,24 @@ public class SocialLoginConfiguration {
     @Autowired
     private MongoOperations mongoOperations;
 
-    @Bean
-    public ProviderSignInController providerSignInController() {
-        ProviderSignInController providerSignInController = new EpamProviderSignInController(connectionFactoryLocator(),
-                usersConnectionRepository(), rpSignInAdapter());
-        providerSignInController.setSessionStrategy(sessionStrategy);
-        providerSignInController.setApplicationUrl("http://localhost:8080/uat");
+//    @Bean
+//    public ProviderSignInController providerSignInController() {
+//        ProviderSignInController providerSignInController = new EpamProviderSignInController(connectionFactoryLocator(),
+//                usersConnectionRepository(), rpSignInAdapter());
+//        providerSignInController.setSessionStrategy(sessionStrategy);
+//        providerSignInController.setApplicationUrl("http://localhost:8080/uat");
+//
+//        return providerSignInController;
+//    }
 
-        return providerSignInController;
-    }
-
     @Bean
-    @Scope(value = "singleton", proxyMode = ScopedProxyMode.INTERFACES)
-    public ConnectionFactoryLocator connectionFactoryLocator() {
+//    @Scope(value = "singleton", proxyMode = ScopedProxyMode.INTERFACES)
+    public SocialProviderFactoryLocator connectionFactoryLocator() {
         return new SocialProviderFactoryLocator(socialProviderRepository);
     }
 
     @Bean
-    @Scope(value = "singleton", proxyMode = ScopedProxyMode.INTERFACES)
+//    @Scope(value = "singleton", proxyMode = ScopedProxyMode.INTERFACES)
     public UsersConnectionRepository usersConnectionRepository() {
         SocialConnectionsRepository repo = new SocialConnectionsRepository(mongoOperations, connectionFactoryLocator(),
                 new MongoConnectionConverters(connectionFactoryLocator(), Encryptors.noOpText()));

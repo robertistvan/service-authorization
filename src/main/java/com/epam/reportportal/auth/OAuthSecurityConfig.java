@@ -20,8 +20,12 @@
  */
 package com.epam.reportportal.auth;
 
+import com.epam.reportportal.auth.social.SocialDataReplicator;
+import com.epam.reportportal.auth.social.SocialLoginConfiguration;
+import com.epam.reportportal.auth.social.SocialProviderFactoryLocator;
 import com.epam.reportportal.auth.social.github.GitHubTokenServices;
 import com.epam.reportportal.auth.social.github.GitHubUserReplicator;
+import com.epam.reportportal.auth.store.SocialMongoSessionRepository;
 import com.google.common.collect.ImmutableList;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionOutcome;
@@ -31,29 +35,39 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ConditionContext;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.http.server.ServletServerHttpRequest;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.SecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.OAuth2ClientContext;
 import org.springframework.security.oauth2.client.filter.OAuth2ClientAuthenticationProcessingFilter;
 import org.springframework.security.oauth2.client.filter.OAuth2ClientContextFilter;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableOAuth2Client;
+import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter;
+import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.social.connect.ConnectionFactoryLocator;
 import org.springframework.social.connect.UsersConnectionRepository;
-import org.springframework.social.connect.web.ProviderSignInController;
-import org.springframework.social.connect.web.SignInAdapter;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.social.security.AuthenticationNameUserIdSource;
+import org.springframework.social.security.SocialAuthenticationFailureHandler;
+import org.springframework.social.security.SocialAuthenticationFilter;
+import org.springframework.social.security.SocialAuthenticationProvider;
+import org.springframework.social.security.SocialUser;
+import org.springframework.social.security.SocialUserDetails;
+import org.springframework.social.security.SocialUserDetailsService;
 import org.springframework.web.filter.CompositeFilter;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import javax.inject.Inject;
+import javax.inject.Provider;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -67,6 +81,7 @@ import java.util.List;
 @EnableOAuth2Client
 @Order(6)
 @Conditional(OAuthSecurityConfig.HasExtensionsCondition.class)
+@Import(SocialLoginConfiguration.class)
 public class OAuthSecurityConfig extends WebSecurityConfigurerAdapter {
 
 	protected static final String SSO_LOGIN_PATH = "/sso/login";
@@ -86,6 +101,20 @@ public class OAuthSecurityConfig extends WebSecurityConfigurerAdapter {
 
 	@Autowired
 	private MongoOperations mongoOperations;
+
+	@Autowired
+	private SocialMongoSessionRepository sessionStrategy;
+
+
+	@Autowired
+	private UsersConnectionRepository usersConnectionRepository;
+
+	@Autowired
+	private Provider<SocialProviderFactoryLocator> socialProviderFactoryLocator;
+
+	@Autowired
+	private SocialDataReplicator socialDataReplicator;
+
 
 	/**
 	 * Extension point. Other Implementations can add their own OAuth processing filters
@@ -119,11 +148,40 @@ public class OAuthSecurityConfig extends WebSecurityConfigurerAdapter {
 						.addAll(getAdditionalFilters(oauth2ClientContext)).build();
 
 		/* make sure filters have correct exception handler */
-		additionalFilters.forEach(filter -> filter.setAuthenticationFailureHandler(OAUTH_ERROR_HANDLER));
-		authCompositeFilter.setFilters(additionalFilters);
+//		additionalFilters.forEach(filter -> filter.setAuthenticationFailureHandler(OAUTH_ERROR_HANDLER));
+//		authCompositeFilter.setFilters(additionalFilters);
 
 		//install additional OAuth Authentication filters
-//		 http.addFilterAfter(authCompositeFilter, BasicAuthenticationFilter.class);
+
+
+		http.apply(new SecurityConfigurerAdapter<DefaultSecurityFilterChain, HttpSecurity>(){
+			@Override
+			public void configure(HttpSecurity builder) throws Exception {
+				SocialAuthenticationFilter filter = new SocialAuthenticationFilter(
+						http.getSharedObject(AuthenticationManager.class),
+						new AuthenticationNameUserIdSource(),
+						usersConnectionRepository,
+						socialProviderFactoryLocator.get());
+//				filter.setSessionStrategy(sessionStrategy);
+//				filter.setAllowSessionCreation(false);
+//				filter.setSessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy());
+				filter.setFilterProcessesUrl(SSO_LOGIN_PATH);
+				filter.setAuthenticationSuccessHandler(authSuccessHandler);
+//				filter.setAuthenticationFailureHandler(new SocialAuthenticationFailureHandler(OAUTH_ERROR_HANDLER));
+
+
+				http.authenticationProvider(
+						new SocialAuthenticationProvider(usersConnectionRepository, new SocialUserDetailsService() {
+							@Override
+							public SocialUserDetails loadUserByUserId(String userId) throws UsernameNotFoundException {
+								return new SocialUser(userId, "", Collections.singletonList(new SimpleGrantedAuthority("USER")));
+							}
+						}))
+						.addFilterBefore(postProcess(filter), AbstractPreAuthenticatedProcessingFilter.class);
+				http.addFilterAfter(filter, BasicAuthenticationFilter.class);
+			}
+		});
+
 		//@formatter:on
 	}
 
@@ -169,8 +227,11 @@ public class OAuthSecurityConfig extends WebSecurityConfigurerAdapter {
 	}
 
 	private static final AuthenticationFailureHandler OAUTH_ERROR_HANDLER = (request, response, exception) -> {
-		response.sendRedirect(UriComponentsBuilder.fromHttpRequest(new ServletServerHttpRequest(request)).replacePath("ui/#login")
-				.replaceQuery("errorAuth=" + exception.getMessage()).build().toUriString());
+		if (!response.isCommitted()){
+			response.sendRedirect(UriComponentsBuilder.fromHttpRequest(new ServletServerHttpRequest(request)).replacePath("ui/#login")
+					.replaceQuery("errorAuth=" + exception.getMessage()).build().toUriString());
+		}
+
 	};
 
 }
