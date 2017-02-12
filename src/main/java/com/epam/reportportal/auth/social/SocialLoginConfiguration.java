@@ -34,14 +34,22 @@ import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.social.config.annotation.EnableSocial;
-import org.springframework.social.connect.Connection;
-import org.springframework.social.connect.ConnectionFactoryLocator;
-import org.springframework.social.connect.ConnectionSignUp;
-import org.springframework.social.connect.UsersConnectionRepository;
+import org.springframework.social.connect.*;
+import org.springframework.social.connect.web.ConnectSupport;
 import org.springframework.social.connect.web.ProviderSignInController;
 import org.springframework.social.connect.web.SignInAdapter;
 import org.springframework.social.security.SocialAuthenticationToken;
+import org.springframework.social.support.URIBuilder;
+import org.springframework.stereotype.Controller;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.servlet.view.RedirectView;
 
+import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -70,9 +78,11 @@ public class SocialLoginConfiguration {
 
     @Bean
     public ProviderSignInController providerSignInController() {
-        ProviderSignInController providerSignInController = new ProviderSignInController(connectionFactoryLocator(),
+        ProviderSignInController providerSignInController = new EpamProviderSignInController(connectionFactoryLocator(),
                 usersConnectionRepository(), rpSignInAdapter());
         providerSignInController.setSessionStrategy(sessionStrategy);
+        providerSignInController.setApplicationUrl("http://localhost:8080/uat");
+
         return providerSignInController;
     }
 
@@ -111,6 +121,23 @@ public class SocialLoginConfiguration {
             User user = socialDataReplicator.replicateUser(connection);
             return user.getId();
         }
+    }
+
+
+    @RequestMapping("/sso/login")
+    static class EpamProviderSignInController extends ProviderSignInController {
+
+        @Inject
+        public EpamProviderSignInController(ConnectionFactoryLocator connectionFactoryLocator,
+                UsersConnectionRepository usersConnectionRepository, SignInAdapter signInAdapter) {
+            super(connectionFactoryLocator, usersConnectionRepository, signInAdapter);
+        }
+
+        @RequestMapping(value="/{providerId}", method= {RequestMethod.POST,RequestMethod.GET})
+        public RedirectView signIn(@PathVariable String providerId, NativeWebRequest request) {
+            return super.signIn(providerId, request);
+        }
+
     }
 
 }

@@ -44,9 +44,16 @@ import org.springframework.security.oauth2.client.filter.OAuth2ClientContextFilt
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableOAuth2Client;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.social.connect.ConnectionFactoryLocator;
+import org.springframework.social.connect.UsersConnectionRepository;
+import org.springframework.social.connect.web.ProviderSignInController;
+import org.springframework.social.connect.web.SignInAdapter;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.filter.CompositeFilter;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.inject.Inject;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -116,7 +123,7 @@ public class OAuthSecurityConfig extends WebSecurityConfigurerAdapter {
 		authCompositeFilter.setFilters(additionalFilters);
 
 		//install additional OAuth Authentication filters
-		 http.addFilterAfter(authCompositeFilter, BasicAuthenticationFilter.class);
+//		 http.addFilterAfter(authCompositeFilter, BasicAuthenticationFilter.class);
 		//@formatter:on
 	}
 
