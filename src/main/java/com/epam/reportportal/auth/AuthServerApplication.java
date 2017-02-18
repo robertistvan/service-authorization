@@ -42,6 +42,8 @@ import org.thymeleaf.spring4.view.ThymeleafViewResolver;
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
+import java.util.Optional;
+
 //import org.springframework.session.data.mongo.AbstractMongoSessionConverter;
 //import org.springframework.session.data.mongo.JdkMongoSessionConverter;
 //import org.springframework.session.data.mongo.config.annotation.web.http.EnableMongoHttpSession;
@@ -59,6 +61,9 @@ import org.thymeleaf.templateresolver.TemplateResolver;
 public class AuthServerApplication {
 
 	public static void main(String[] args) {
+		//workaround for https://github.com/spring-projects/spring-boot/issues/8234
+		Optional.ofNullable(System.getenv("rp.profiles")).ifPresent(p -> System.setProperty("spring.profiles.active",p));
+
 		SpringApplication.run(AuthServerApplication.class, args);
 	}
 

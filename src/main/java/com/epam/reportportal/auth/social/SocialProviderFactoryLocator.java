@@ -96,7 +96,7 @@ public class SocialProviderFactoryLocator implements SocialAuthenticationService
                                     return Collections.singletonList(value);
                                 }));
                 return ServletUriComponentsBuilder
-                        .fromHttpRequest(new ServletServerHttpRequest(request))
+                        .fromRequest(request)
                         .queryParams(new LinkedMultiValueMap<>(urlParams))
                         .toUriString();
             }

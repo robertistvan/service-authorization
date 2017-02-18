@@ -7,7 +7,7 @@ buildscript {
     }
     dependencies {
         classpath "io.spring.gradle:dependency-management-plugin:0.6.1.RELEASE"
-        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.4.3.RELEASE")
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.5.1.RELEASE")
         classpath 'com.bmuschko:gradle-docker-plugin:3.0.3'
         classpath 'org.ajoberstar:grgit:1.6.0-rc.1'
     }
@@ -45,8 +45,8 @@ repositories {
 
 dependencyManagement {
     imports {
-        mavenBom "org.springframework.cloud:spring-cloud-starter-parent:Camden.SR3"
-
+        mavenBom "org.springframework.cloud:spring-cloud-starter-parent:Camden.SR5"
+        mavenBom "org.springframework.boot:spring-boot-dependencies:1.5.1.RELEASE"
     }
 }
 
@@ -57,7 +57,7 @@ configurations.all {
 dependencies {
 //    compile 'com.epam.reportportal:commons-dao:2.7.0'
 //    compile 'com.epam.reportportal:commons-rules:2.7.0'
-    compile 'com.github.reportportal:commons-dao:a5711fa79e'
+    compile 'com.github.reportportal:commons-dao:7b11b34b3c'
     compile 'com.github.reportportal:commons-rules:master-SNAPSHOT'
 
     compile 'javax.inject:javax.inject:1'
@@ -71,10 +71,8 @@ dependencies {
     compile 'org.springframework.cloud:spring-cloud-starter-eureka'
     compile 'org.springframework.cloud:spring-cloud-starter-consul-discovery'
 
-    compile 'org.springframework.social:spring-social-core'
-//    compile 'org.springframework.social:spring-social-web'
+    compile 'org.springframework.social:spring-social-security:2.0.0.M2'
     compile 'org.springframework.social:spring-social-github:1.0.0.M4'
-    compile 'org.springframework.social:spring-social-security'
     compile("org.thymeleaf:thymeleaf-spring4:2.1.2.RELEASE")
 
 

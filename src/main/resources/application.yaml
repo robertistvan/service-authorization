@@ -7,7 +7,7 @@ security:
 spring:
   profiles:
     ## Default one is still Eureka
-    active: ${rp.profiles:default}
+    active: ${rp.profiles:eureka}
   cloud:
     consul:
       host: localhost
