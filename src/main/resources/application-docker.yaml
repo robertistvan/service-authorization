@@ -10,7 +10,7 @@ spring:
       host: registry
       discovery:
         hostname: ${HOSTNAME:uat}
-        prefer-ip-address: false
+        prefer-ip-address: ${PREFER_IP:false}
 
 # Eureka Configuration
 eureka:
@@ -18,7 +18,7 @@ eureka:
     hostname: ${HOSTNAME:uat}
   client:
     serviceUrl:
-      defaultZone: http://registry:8761/eureka/
+      defaultZone: http://${REGISTRY_HOST:registry}:8761/eureka/
 
 # MongoDB configuration
 rp:
